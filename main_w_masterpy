@@ -1,0 +1,126 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+class RLagent(Nstates, Nactions, Nepisodes, MinAlpha, gamma, eps, Neposides):
+
+    def __init__(self):
+        self.Nstates = Nstates
+        self.Nactions = Nactions
+        self.Nepisodes = Nepisodes
+        self.Minalpha = MinAlpha
+        self.gamma = gamma
+        self.eps = eps
+        self.alphas = np.linspace(1.0, self.MinAlpha, self.Nepisodes)
+        self.Q = np.zeros((self.Nstates, self.Nactions))
+        self.totalReward = 0
+        self.totalTDe = 0
+
+    def chooseAction(state, eps):
+        if np.random.uniform(0, 1) < eps:
+            return np.random.choice(np.arange(Nactions))
+        else:
+            return np.argmax(self.Q[state, :])
+
+    def act(state, action, W, R):
+        nextState = np.random.choice(np.arange(Nstates), p=W[state, action,:])
+        reward = R[state, action]
+        return nextState, reward
+
+    def updateQ(self, reward, state, nextState, action, episode):
+        alpha = self.alphas(episode)
+        TDe = reward + self.gamma*np.max(self.Q[nextState,:]) - self.Q[state, action]
+        self.totalReward += reward
+        self.totalTDe += TDe
+        Qp[state, action] = self.Q[state, action] + alpha * TDe
+
+    def normalize(X, Nstates, Nactions):
+        for i in range(0,Nstates):
+            for j in range(0,Nactions):
+                probSum = np.sum(X[i, j, :])
+                X[i, j, :] = X[i, j, :] / probSum
+        return X
+
+
+
+#### player parameters ####
+NsP = 10 #Number of states the player can be in
+NaP = 2 # number of actions the player can
+NeP = 500
+EpiStepsP = 10
+MinAlphaP = 0.01
+alphasP = np.linspace(1.0, MinAlpha, Nepisodes)
+gammaP = 0.95
+epsP = 0.2
+
+#### master parameters ####
+NsM = NsP * NaP * NsP + NsP * NaP # size of the World matrix + size of the Reward matrix
+NaM = NsP * 2 # the action is to change one parameter in matrixes R or W by +-10%
+NeM = 500
+EpiStepsMP = 10
+MinAlphaM = 0.01
+alphasM = np.linspace(1.0, MinAlphaM, NepisodesM)
+gammaM = 0.95
+epsM = 0.2
+np.random.seed(0)
+W = np.random.rand(Nstates,Nactions, Nstates)
+W = normalize(W, Nstates, Nactions)
+R = np.random.rand(Nstates,Nactions)
+Qp = np.zeros((Nstates,Nactions))
+
+Nactions_m = 3
+Qm = np.zeros((
+logR = []
+logTDe = []
+
+for e in range(Nepisodes):
+
+    state = 0
+    totalReward = 0
+    totalTDe = 0
+    alpha = alphas[e]
+    for step in range(MaxEpiSteps):
+        action = chooseAction(state, Qp, eps)
+        nextState, reward = act(state, action, W, R, Qp)
+        TDe = reward + gamma*np.max(Q[nextState,:])-Q[state, action]
+        totalReward += reward
+        totalTDe += TDe
+        Qp[state, action] = Qp[state, action]+alpha*(reward + gamma*np.max(Qp[nextState,:])-Qp[state, action])
+        state = nextState
+
+    logR.append(totalReward)
+    logTDe.append(totalTDe)
+
+plt.figure(1)
+plt.plot(logR)
+plt.xlabel('Episodes')
+plt.ylabel('Accumulated reward')
+plt.figure(2)
+plt.plot(logTDe)
+plt.xlabel('Episodes')
+plt.ylabel('Accumulated TD error')
+plt.show()
+
+
+
+R, W = game.initialize
+Qp = player.initialize
+Qm = master.initialize
+for i in range(0, EpiMAster):
+    action = master.chooseAction(state, Qm, eps)
+    W, R = master.act(actions, state, W, R)
+    player.runEpoch(W, R)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
