@@ -1,18 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from tempfile import TemporaryFile
+import time
+import pickle
 outfile = TemporaryFile()
 #RL agent learns policy for maximum accumulated reward
 #master changes the game each player epoch
 #R is converted from matrix to vector
 #fixed bug that the game didn't really update afte the master acted
-
+#all parameters save in file
 
 class MDP:
 
     def __init__(self, nodes, edgePerNode):
 
         np.random.seed(0)
+        self.nodes = nodes
+        self.edgePerNode= edgePerNode
         self.W = np.exp(10.0 * np.random.rand(nodes, edgePerNode, nodes))
         self.W = self.normalize(self.W, nodes, edgePerNode)
         print self.W
@@ -31,10 +35,10 @@ class MDP:
     def reset(self):
         #np.random.seed(0)
         #self.W = np.exp(10.0 * np.random.rand(nodes, edgePerNode, nodes))
-        self.W = self.normalize(self.W, nodes, edgePerNode)
-        Rvector = np.random.randint(edgePerNode, size=nodes)
-        self.R = np.zeros((nodes, edgePerNode))
-        for i in range(0, nodes):
+        self.W = self.normalize(self.W, self.nodes, self.edgePerNode)
+        Rvector = np.random.randint(self.edgePerNode, size=self.nodes)
+        self.R = np.zeros((self.nodes, self.edgePerNode))
+        for i in range(0, self.nodes):
             self.R[i, Rvector[i]] = 1
 
 
@@ -168,14 +172,32 @@ class Master:
 
 ###parameters###
 ##world##
-nodes = 10
-edgePerNode = 2
+W_nodes = 10
+W_edgePerNode = 2
 
 ##player##
+P_Nstates = W_nodes
+P_Nactions = W_edgePerNode
+P_eps = 0.2
+P_gamma = 0.95
+P_Nepisodes = 100
+P_MaxEpiSteps = 20
+P_MinAlpha = 0.01
 
-game = MDP(nodes, edgePerNode)
-player = Player(nodes, edgePerNode, eps=0.2, gamma=0.95, Nepisodes=100, MaxEpiSteps=20, MinAlpha=0.01)
-master = Master(Nstates=np.power(edgePerNode,nodes), Nactions=nodes, eps=0.2, gamma=0.95, Nepisodes=2000, MaxEpiSteps=10, MinAlpha=0.01)
+##game master##
+
+M_Nstates = np.power(W_edgePerNode,W_nodes)
+M_Nactions = W_nodes
+M_eps = 0.2
+M_gamma = 0.95
+M_Nepisodes = 5
+M_MaxEpiSteps = 10
+M_MinAlpha = 0.01
+
+
+game = MDP(W_nodes, W_edgePerNode)
+player = Player(W_nodes, W_edgePerNode, P_eps, P_gamma, P_Nepisodes, P_MaxEpiSteps, P_MinAlpha)
+master = Master(M_Nstates, M_Nactions, M_eps, M_gamma, M_Nepisodes, M_MaxEpiSteps, M_MinAlpha)
 
 logFinalR = []
 logR = []
@@ -217,6 +239,17 @@ for episode in range(0, master.Nepisodes):
     logTDe.append(totalTDe)
     logPTDe.append(np.average(PlogTDe[-10:]))
 
+
+#save data
+parameters = {'W_nodes':W_nodes, 'W_edgePerNode':W_edgePerNode,
+              'P_Nstates':P_Nstates, 'P_Nactions':P_Nactions,'P_eps':P_eps, 'P_gamma':P_gamma, 'P_Nepisodes':P_Nepisodes,
+              'P_MaxEpiSteps':P_MaxEpiSteps, 'P_MinAlpha':P_MinAlpha,
+              'M_Nstates':M_Nstates, 'M_Nactions':M_Nactions, 'M_eps':M_eps, 'M_gamma':M_gamma, 'M_MaxEpiSteps':M_MaxEpiSteps,
+              'M_MinAlpha':M_MinAlpha,
+              'logr':logr, 'logR':logR, 'logTDe':logTDe, 'logPTDe':logPTDe}
+fileName = time.strftime("Log-%H%M-%d-%m-%Y.pickle")
+with open(fileName, 'wb') as f:
+    pickle.dump(parameters, f)
 
 
 #print TDepoch

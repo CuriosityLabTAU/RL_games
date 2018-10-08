@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+#RL agent learns policy for maximum accumulated reward
+
 
 def normalize(X, Nstates, Nactions):
     for i in range(0,Nstates):
@@ -13,6 +15,7 @@ def chooseAction(state, Q, eps):
     if np.random.uniform(0, 1) < eps:
         return np.random.choice(np.arange(Nactions))
     else:
+        a = np.argmax(Q[state, :])
         return np.argmax(Q[state, :])
 
 def act(state, action, W, R, Q):
@@ -28,8 +31,8 @@ MinAlpha = 0.01
 alphas = np.linspace(1.0, MinAlpha, Nepisodes)
 gamma = 0.95
 eps = 0.2
-np.random.seed(0)
-W = np.random.rand(Nstates,Nactions, Nstates)
+# np.random.seed(0)
+W = np.exp(10.0*np.random.rand(Nstates,Nactions, Nstates))
 W = normalize(W, Nstates, Nactions)
 R = np.random.rand(Nstates,Nactions)
 Q = np.zeros((Nstates,Nactions))
@@ -49,10 +52,16 @@ for e in range(Nepisodes):
         totalReward += reward
         totalTDe += TDe
         Q[state, action] = Q[state, action]+alpha*(reward + gamma*np.max(Q[nextState,:])-Q[state, action])
+        if e == Nepisodes-1:
+            print(state, action, nextState, reward)
         state = nextState
 
     logR.append(totalReward)
     logTDe.append(totalTDe)
+
+# print ['w', W]
+# print ['R', R]
+# print ['Q', Q]
 
 plt.figure(1)
 plt.plot(logR)

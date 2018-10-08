@@ -1,25 +1,37 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from tempfile import TemporaryFile
+import time
+import pickle
+import random
 outfile = TemporaryFile()
 #RL agent learns policy for maximum accumulated reward
 #master changes the game each player epoch
 #R is converted from matrix to vector
 #fixed bug that the game didn't really update afte the master acted
-
+#all parameters save in file
+#sparse R matrix
 
 class MDP:
 
-    def __init__(self, nodes, edgePerNode):
+    def __init__(self, nodes, edgePerNode, Nsparse):
 
         np.random.seed(0)
+        self.nodes = nodes
+        self.edgePerNode= edgePerNode
+        self.Nsparse = Nsparse
         self.W = np.exp(10.0 * np.random.rand(nodes, edgePerNode, nodes))
         self.W = self.normalize(self.W, nodes, edgePerNode)
-        print self.W
-        Rvector = np.random.randint(edgePerNode, size=nodes)
+        #Rvector = np.random.randint(edgePerNode, size=nodes)
+        Rvector = random.sample(range(nodes*edgePerNode), Nsparse)
+        print Rvector
         self.R = np.zeros((nodes, edgePerNode))
-        for i in range(0, nodes):
-            self.R[i, Rvector[i]] = 1
+        print self.R
+        Rindex = self.R.flatten()
+        for i in range(0, Nsparse):
+            Rindex[Rvector[i]] = 1
+        self.R = Rindex.reshape((nodes, edgePerNode))
+        print self.R
 
     def normalize(self, X, nodes, edgePerNode):
         for i in range(0, nodes):
@@ -31,11 +43,20 @@ class MDP:
     def reset(self):
         #np.random.seed(0)
         #self.W = np.exp(10.0 * np.random.rand(nodes, edgePerNode, nodes))
-        self.W = self.normalize(self.W, nodes, edgePerNode)
-        Rvector = np.random.randint(edgePerNode, size=nodes)
-        self.R = np.zeros((nodes, edgePerNode))
-        for i in range(0, nodes):
+        self.W = self.normalize(self.W, self.nodes, self.edgePerNode)
+        Rvector = np.random.randint(self.edgePerNode, size=self.nodes)
+        self.R = np.zeros((self.nodes, self.edgePerNode))
+        for i in range(0, self.nodes):
             self.R[i, Rvector[i]] = 1
+
+    def createR(self, Rvector):
+        self.R = np.zeros((self.nodes, self.edgePerNode))
+        print self.R
+        Rindex = self.R.flatten()
+        for i in range(0, self.Nsparse):
+            Rindex[Rvector[i]] = 1
+        self.R = Rindex.reshape((self.nodes, self.edgePerNode))
+        print self.R
 
 
 class Player:
@@ -168,84 +189,53 @@ class Master:
 
 ###parameters###
 ##world##
-nodes = 10
-edgePerNode = 2
+W_nodes = 10
+W_edgePerNode = 2
+W_Nsparse = 2
 
 ##player##
+P_Nstates = W_nodes
+P_Nactions = W_edgePerNode
+P_eps = 0.2
+P_gamma = 0.95
+P_Nepisodes = 100
+P_MaxEpiSteps = 20
+P_MinAlpha = 0.01
 
-game = MDP(nodes, edgePerNode)
-player = Player(nodes, edgePerNode, eps=0.2, gamma=0.95, Nepisodes=100, MaxEpiSteps=20, MinAlpha=0.01)
-master = Master(Nstates=np.power(edgePerNode,nodes), Nactions=nodes, eps=0.2, gamma=0.95, Nepisodes=2000, MaxEpiSteps=10, MinAlpha=0.01)
+##game master##
 
-logFinalR = []
+M_Nstates = np.power(W_edgePerNode,W_nodes)
+M_Nactions = W_nodes
+M_eps = 0.2
+M_gamma = 0.95
+M_Nepisodes = 5
+M_MaxEpiSteps = 10
+M_MinAlpha = 0.01
+
+
+game = MDP(W_nodes, W_edgePerNode, W_Nsparse)
+player = Player(W_nodes, W_edgePerNode, P_eps, P_gamma, P_Nepisodes, P_MaxEpiSteps, P_MinAlpha)
+master = Master(M_Nstates, M_Nactions, M_eps, M_gamma, M_Nepisodes, M_MaxEpiSteps, M_MinAlpha)
+
 logR = []
-logr = []
 logTDe = []
-logAction  = []
-logPTDe = []
-for episode in range(0, master.Nepisodes):
-    #game.reset()
-    #game = MDP(nodes, edgePerNode)
-    alpha = master.alphas[episode]
-    state_int = master.arr2int(game.R)
-    state_arr = game.R
-    totalReward = 0
-    totalTDe = 0
-    player.reset()
-    print 'episode = ', episode
-    for step in range(0, master.MaxEpiSteps):
-        player.reset()
-        action = master.chooseAction(state_int)
-        #print 'action = ', action
-        game.R = master.act(state_arr, action, game.W, game.R)
-        nextState_int = master.arr2int(game.R)
-        PlogR, PlogTDe = player.runEpoch(game.W, game.R)
-        if episode==master.Nepisodes-1 and step==master.MaxEpiSteps-1:
-            plt.figure(6)
-            plt.plot(PlogR)
-            plt.figure(7)
-            plt.plot(PlogTDe)
-        reward = master.computeReward(PlogTDe)
-        #reward = -master.computeReward(PlogR)
-        TDe = reward + master.gamma*np.max(master.Q[nextState_int,:])-master.Q[state_int, action]
-        master.Q[state_int, action] = master.Q[state_int, action]+alpha*(TDe)
-        totalReward += reward
-        totalTDe += np.abs(TDe)
-        logAction.append(action)
-    logr.append(reward)
-    logR.append(totalReward)
-    logTDe.append(totalTDe)
-    logPTDe.append(np.average(PlogTDe[-10:]))
+logBestScore = []
+for i in range(0, W_nodes*W_edgePerNode):
+    for j in range(0, W_nodes*W_edgePerNode):
+        if i!=j and i>j:
+            game.R = game.createR([i, j])
+            player.reset()
+            PlogR, PlogTDe = player.runEpoch(game.W, game.R)
+            bestScore = np.sum(PlogR[-1])
+            logR.append(PlogR)
+            logTDe.append(PlogTDe)
+            logBestScore.append(bestScore)
 
-
-
-#print TDepoch
-
-# print ['w', W]
-# print ['R', R]
-# print ['Q', Q]
-
-plt.figure(1)
-plt.plot(logR)
-plt.xlabel('Episodes')
-plt.ylabel('Accumulated master reward per episode')
-plt.figure(2)
-plt.plot(logTDe)
-plt.xlabel('Episodes')
-plt.ylabel('Accumulated master TD error per episode')
-plt.figure(3)
-plt.plot(logAction)
-plt.xlabel('Episodes')
-plt.ylabel('all master actions actions in epoch')
-plt.figure(4)
-plt.plot(logPTDe)
-plt.xlabel('Episodes')
-plt.ylabel('average player TD error of last 10 episodes in each epoch')
-plt.figure(5)
-plt.plot(logr)
-plt.xlabel('Episodes')
-plt.ylabel('Reward of last master step in each episode')
+plt.hist(logBestScore, bins='auto')  # arguments are passed to np.histogram
+plt.title("Histogram with 'auto' bins")
 plt.show()
+
+
 
 
 

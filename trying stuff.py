@@ -1,4 +1,34 @@
 import numpy as np
+import pickle
+import time
+import random
+timestr = time.strftime("Log-%H%M-%d-%m-%Y")
+#print timestr
+
+
+dict = {'Name': 'Zara', 'Age': 7, 'Class': 'First'}
+#print dict
+
+filename = timestr
+with open(filename, 'wb') as f:
+    pickle.dump(dict, f)
+
+#with open(filename, 'rb') as f:
+#    dict1 = pickle.load(f)
+#print dict1
+
+a = np.random.randint(5, size=(2, 4))
+print a
+b = a.flatten()
+print b
+c = b.reshape((2,4))
+print c
+
+Rvector = random.sample(range(20), 2)
+print Rvector
+
+
+
 
 
 def arr2int(X):
@@ -27,4 +57,4 @@ np.random.seed(0)
 Rvector = np.random.randint(10, size=2)
 #print Rvector
 
-print(np.random.randint(5, size=(2, 4, 2)))
+#print(np.random.randint(5, size=(2, 4, 2)))
