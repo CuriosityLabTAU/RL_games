@@ -12,7 +12,8 @@ outfile = TemporaryFile()
 #fixed bug that the game didn't really update afte the master acted
 #all parameters save in file
 #sparse R matrix
-#N sparse = 2
+#N sparse = as many as you want
+
 
 class MDP:
 
@@ -54,8 +55,7 @@ class MDP:
             self.R[i, Rvector[i]] = 1
 
     def createR(self, Rvector):
-        #self.R = np.zeros((self.nodes, self.edgePerNode))
-        self.R = np.full((self.nodes, self.edgePerNode), -0.1)
+        self.R = np.zeros((self.nodes, self.edgePerNode))
         Rindex = self.R.flatten()
         for i in range(0, self.Nsparse):
             Rindex[Rvector[i]] = 1
@@ -205,10 +205,10 @@ W_Nsparse = 2
 ##player##
 P_Nstates = W_nodes
 P_Nactions = W_edgePerNode
-P_eps = 0.05
+P_eps = 0.2
 P_gamma = 0.95
-P_Nepisodes = 100000
-P_MaxEpiSteps = 30
+P_Nepisodes = 1000
+P_MaxEpiSteps = 5
 P_MinAlpha = 0.1
 
 ##game master##
@@ -259,13 +259,13 @@ for i in range(0, W_nodes*W_edgePerNode):
             faccumuR[j] += PlogR[-1]
             gameDiff[i,j] = PlogR[-1]
             k += 1
-            plt.figure(3)
-            plt.plot(PlogR)
-            smooth_box = 20
-            smoothed = smooth(PlogR, smooth_box)
-            plt.figure(4)
-            plt.plot(smoothed[smooth_box-1:-smooth_box])
-            plt.show()
+            #plt.figure(1)
+            #plt.plot(PlogR)
+            #smooth_box = 20
+            #smoothed = smooth(PlogR, smooth_box)
+            #plt.figure(2)
+            #plt.plot(smoothed[smooth_box-1:-smooth_box])
+            #plt.show()
 
 
 
