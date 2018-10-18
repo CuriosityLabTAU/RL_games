@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tempfile import TemporaryFile
 import time
+import datetime
 import pickle
 import random
 import math
@@ -13,7 +14,8 @@ outfile = TemporaryFile()
 #fixed bug that the game didn't really update afte the master acted
 #all parameters save in file
 #sparse R matrix
-#N sparse = 2
+#N sparse = N
+#averaging over epochs
 
 class MDP:
 
@@ -58,14 +60,14 @@ class MDP:
         #self.R = np.zeros((self.nodes, self.edgePerNode))
         self.R = np.full((self.nodes, self.edgePerNode), 0.0)
         Rindex = self.R.flatten()
-        print Rvector
+        #print Rvector
         for i in range(0, self.Nsparse):
             Rindex[Rvector[i]] += 1
         self.R = Rindex.reshape((self.nodes, self.edgePerNode))
         #for i in range(len(self.R[:,0])):
         #    if (1 in self.R[i,:]) == True:
         #        self.R[i,:] = 1
-        print self.R
+        #print self.R
         return self.R
 
 
@@ -206,8 +208,16 @@ def sparseVector(index, Nsparse, nodes, edgePerNode):
     Ngames = np.power(nodes * edgePerNode, Nsparse)
     sparseMat = np.zeros((Ngames ,Nsparse))
 
+def averageLogs(log):
+    nlog = np.asarray(log)
+    averaged = sum(nlog)/len(nlog)
+
 
 ###parameters###
+
+#analysis parameters
+Nepochs = 100
+
 ##world##
 W_nodes = 10
 W_edgePerNode = 2
@@ -218,8 +228,8 @@ P_Nstates = W_nodes
 P_Nactions = W_edgePerNode
 P_eps = 0.1
 P_gamma = 0.95
-P_Nepisodes = 300
-P_MaxEpiSteps = 20
+P_Nepisodes = 500
+P_MaxEpiSteps = 30
 P_MinAlpha = 0.01
 
 ##game master##
@@ -229,12 +239,12 @@ M_Nactions = W_nodes
 M_eps = 0.1
 M_gamma = 0.95
 M_Nepisodes = 5
-M_MaxEpiSteps = 20
+M_MaxEpiSteps = 30
 M_MinAlpha = 0.01
 
 
 game = MDP(W_nodes, W_edgePerNode, W_Nsparse)
-print game.W
+#print game.W
 player = Player(W_nodes, W_edgePerNode, P_eps, P_gamma, P_Nepisodes, P_MaxEpiSteps, P_MinAlpha)
 master = Master(M_Nstates, M_Nactions, M_eps, M_gamma, M_Nepisodes, M_MaxEpiSteps, M_MinAlpha)
 
@@ -244,6 +254,16 @@ logLastScore = []
 logLastTDe = []
 logTDdiff = []
 logTotalTDe = []
+logGame = []
+
+tot_logR = []
+tot_logTDe = []
+tot_logLastScore = []
+tot_logLastTDe = []
+tot_logTDdiff = []
+tot_logTotalTDe = []
+tot_logGame = []
+
 K = math.factorial(W_nodes*W_edgePerNode)/(math.factorial(W_Nsparse)*math.factorial(W_nodes*W_edgePerNode-W_Nsparse))
 #gameDiff = np.zeros((K, W_Nsparse+1))
 gameDiff = np.zeros((W_nodes*W_edgePerNode,W_nodes*W_edgePerNode))
@@ -255,59 +275,101 @@ sparseList = list(itertools.product(range(W_nodes * W_edgePerNode),repeat = W_Ns
 
 Ngames = len(sparseList)
 
-
-k = 0
+#k = 0
 #for t in range(Ngames):
-while k<=Ngames-1:
-    #if len(np.unique(sparseList[k]))!= W_Nsparse or np.all(np.diff(sparseList[k])<=0)==True:
-    print ["k =", k, "before loop", np.diff(sparseList[k]), sparseList[k]]
-    if  np.all(np.diff(sparseList[k])>0)==False:
-        print [" in loop", k]
-        print sparseList[k]
-        print np.diff(sparseList[k])
-        print "k += 1"
-        k += 1
-    else:
-        print k
-        #game.R = game.createR([1,2,3,4,5])
-        game.R = game.createR(sparseList[k])
-        #game.R = game.createR(np.random.choice(sparseList,1))
-        player.reset()
-        PlogR, PlogTDe = player.runEpoch(game.W, game.R)
-        logR.append(PlogR)
-        logLastScore.append(PlogR[-1])
-        logTDe.append(PlogTDe)
-        logLastTDe.append(PlogTDe[-1])
-        TDdiff = master.computeReward(logTDe)
-        logTDdiff.append(TDdiff)
-        totalTDe = np.sum(PlogTDe)
-        logTotalTDe.append(totalTDe)
-        sparseGame = sparseList[k]
-        for j in range(len(sparseGame)):
-            faccumuR[sparseGame[j]] += PlogR[-1]
-        #k_old = k
-        #while len(np.unique(sparseList[k])) != W_Nsparse:
-        #    print ['unique = ', len(np.unique(sparseList[k])), W_Nsparse, 'k = ', k]
-        #    k += 1
-        #if k == k_old:
-        #    k += 1
-        k += 1
-        #plt.figure(3)
-        #plt.plot(PlogR)
-        #smooth_box = 20
-        #smoothed = smooth(PlogR, smooth_box)
-        #plt.figure(4)
-        #plt.plot(smoothed[smooth_box-1:-smooth_box])
-        #plt.figure(5)
-        #plt.plot(smoothed)
-        #plt.show()
+t1 = datetime.datetime.now()
+for i in range(Nepochs):
+    t2 = datetime.datetime.now()
+    time_diff = t2 - t1
+    print time_diff
+    print i
+    k = 0
+    logR = []
+    logTDe = []
+    logLastScore = []
+    logLastTDe = []
+    logTDdiff = []
+    logTotalTDe = []
+    logGame = []
+    while k<=Ngames-1:
+        #if len(np.unique(sparseList[k]))!= W_Nsparse or np.all(np.diff(sparseList[k])<=0)==True:
+        #print ["k =", k, "before loop", np.diff(sparseList[k]), sparseList[k]]
+        if  np.all(np.diff(sparseList[k])>0)==False:
+            #print [" in loop", k]
+            #print sparseList[k]
+            #print np.diff(sparseList[k])
+            #print "k += 1"
+            k += 1
+            #print ['k =', k]
+        else:
+            #print ['k = ', k]
+            #game.R = game.createR([1,2,3,4,5])
+            game.R = game.createR(sparseList[k])
+            #game.R = game.createR(np.random.choice(sparseList,1))
+            player.reset()
+            PlogR, PlogTDe = player.runEpoch(game.W, game.R)
+            gameMat = [player.Q, game.R, game.W]
+            logGame.append(gameMat)
+            logR.append(PlogR)
+            logLastScore.append(PlogR[-1])
+            logTDe.append(PlogTDe)
+            logLastTDe.append(PlogTDe[-1])
+            TDdiff = master.computeReward(logTDe)
+            logTDdiff.append(TDdiff)
+            totalTDe = np.sum(PlogTDe)
+            logTotalTDe.append(totalTDe)
+            sparseGame = sparseList[k]
+            for j in range(len(sparseGame)):
+                faccumuR[sparseGame[j]] += PlogR[-1]
+            #k_old = k
+            #while len(np.unique(sparseList[k])) != W_Nsparse:
+            #    print ['unique = ', len(np.unique(sparseList[k])), W_Nsparse, 'k = ', k]
+            #    k += 1
+            #if k == k_old:
+            #    k += 1
+            k += 1
+            #plt.figure(3)
+            #plt.plot(PlogR)
+            #plt.show()
+            #smooth_box = 20
+            #smoothed = smooth(PlogR, smooth_box)
+            #plt.figure(4)
+            #plt.plot(smoothed[smooth_box-1:-smooth_box])
+            #plt.figure(5)
+            #plt.plot(smoothed)
+            #plt.show()
+    tot_logR.append(logR)
+    tot_logLastScore.append(logLastScore)
+    tot_logTDe.append(logTDe)
+    tot_logLastTDe.append(logLastTDe)
+    tot_logTDdiff.append(logTDdiff)
+    tot_logTotalTDe.append(logTotalTDe)
+    tot_logGame.append(logGame)
+
+Ngames = tot_logGame[0]
+
+print ['len', len(tot_logGame[0])]
+av_logR = np.zeros((P_Nepisodes,1))
+gameNum = 100
+for i in range(Nepochs):
+    for j in range(P_Nepisodes):
+        temp = (tot_logR[i][gameNum][j])/Nepochs
+        #print av_logR
+        av_logR[j] += temp
+
+#plt.plot(av_logR)
+#plt.show()
 
 parameters = {'W_nodes':W_nodes, 'W_edgePerNode':W_edgePerNode, 'W_Nsparse':W_Nsparse,
               'P_Nstates':P_Nstates, 'P_Nactions':P_Nactions,'P_eps':P_eps, 'P_gamma':P_gamma, 'P_Nepisodes':P_Nepisodes,
               'P_MaxEpiSteps':P_MaxEpiSteps, 'P_MinAlpha':P_MinAlpha,
               'M_Nstates':M_Nstates, 'M_Nactions':M_Nactions, 'M_eps':M_eps, 'M_gamma':M_gamma, 'M_MaxEpiSteps':M_MaxEpiSteps,
-              'M_MinAlpha':M_MinAlpha}
+              'M_MinAlpha':M_MinAlpha, 'M_Nepisodes':M_Nepisodes, 'Nepochs':Nepochs, 'Ngames':Ngames}
 
+save_variables = [parameters,tot_logR,tot_logLastScore,tot_logTDe,tot_logLastTDe, tot_logTDdiff,tot_logTotalTDe, tot_logGame]
+fileName = time.strftime("Log-%H%M-%d-%m-%Y.p")
+with open(fileName, 'wb') as f:
+    pickle.dump(save_variables, f)
 
 plt.figure(1)
 plt.subplot(231)
@@ -348,7 +410,7 @@ plt.text(0.6, 0.5, parameters, size=12, rotation=0.,
          wrap=True)
 
 #plt.matshow(gameDiff)
-
+plt.figure(2)
 accumuR = faccumuR.reshape((W_nodes, W_edgePerNode))
 plt.matshow(accumuR)
 
